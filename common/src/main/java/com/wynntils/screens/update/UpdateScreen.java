@@ -203,13 +203,15 @@ public final class UpdateScreen extends WynntilsScreen {
                                 TextShadow.NORMAL,
                                 1.5f);
 
-                if (completionTrigger == CompletionTrigger.CONNECT) {
+                int secondsRemaining =
+                        Math.max(0, (int) Math.ceil((completionFinish - System.currentTimeMillis()) / 1000f));
+
+                if (completionTrigger == CompletionTrigger.CONNECT && serverData != null) {
                     FontRenderer.getInstance()
                             .renderText(
                                     guiGraphics,
                                     StyledText.fromComponent(Component.translatable(
-                                            "screens.wynntils.update.connecting",
-                                            (int) Math.ceil((completionFinish - System.currentTimeMillis()) / 1000f))),
+                                            "screens.wynntils.update.connecting", secondsRemaining)),
                                     this.width / 2f,
                                     100,
                                     CommonColors.AQUA,
@@ -217,13 +219,12 @@ public final class UpdateScreen extends WynntilsScreen {
                                     VerticalAlignment.MIDDLE,
                                     TextShadow.NORMAL,
                                     1.5f);
-                } else {
+                } else if (completionTrigger == CompletionTrigger.EXIT) {
                     FontRenderer.getInstance()
                             .renderText(
                                     guiGraphics,
                                     StyledText.fromComponent(
-                                            Component.translatable("screens.wynntils.update.exiting", (int) Math.ceil(
-                                                    (completionFinish - System.currentTimeMillis()) / 1000f))),
+                                            Component.translatable("screens.wynntils.update.exiting", secondsRemaining)),
                                     this.width / 2f,
                                     100,
                                     CommonColors.AQUA,
@@ -331,6 +332,11 @@ public final class UpdateScreen extends WynntilsScreen {
     }
 
     private void connectToServer() {
+        if (serverData == null) {
+            McUtils.mc().setScreen(previousScreen);
+            return;
+        }
+
         // We pass in the titleScreen here so that if failing to connect the title screen is returned to instead of this
         ConnectScreen.startConnecting(
                 previousScreen, McUtils.mc(), ServerAddress.parseString(serverData.ip), serverData, false, null);
