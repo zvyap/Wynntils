@@ -15,6 +15,7 @@ import com.wynntils.core.persisted.config.Config;
 import com.wynntils.core.persisted.config.ConfigCategory;
 import com.wynntils.models.activities.event.ContentBookOpenEvent;
 import com.wynntils.utils.mc.McUtils;
+import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -23,11 +24,16 @@ import net.neoforged.bus.api.SubscribeEvent;
 
 @ConfigCategory(Category.UTILITIES)
 public class LockContentBookFeature extends Feature {
+    private static final long COMBAT_LOCK_DURATION_MS = 10_000L;
+
     private boolean activityLocked;
     private TickSchedulerManager.ScheduledTask lockStateTask;
 
     @Persisted
     private final Config<ForceUnlockAction> forceUnlockAction = new Config<>(ForceUnlockAction.NONE);
+
+    @Persisted
+    private final Config<Boolean> lockInCombat = new Config<>(true);
 
     @Persisted
     private final Config<Boolean> lockInRaid = new Config<>(true);
@@ -45,7 +51,7 @@ public class LockContentBookFeature extends Feature {
     private final Config<Boolean> lockInWar = new Config<>(true);
 
     public LockContentBookFeature() {
-        super(ProfileDefault.DISABLED);
+        super(ProfileDefault.DISABLED, List.of(ConfigDependency.functionality(Models.Combat.trackDamage)));
     }
 
     @Override
@@ -110,7 +116,10 @@ public class LockContentBookFeature extends Feature {
     private boolean isLocked() {
         if (!Models.WorldState.onWorld() || Models.WorldState.inCharacterWardrobe()) return false;
 
-        return (lockInRaid.get() && Models.Raid.getCurrentRaid() != null)
+        return (lockInCombat.get()
+                        && System.currentTimeMillis() - Models.Combat.getLastDamageDealtTimestamp()
+                                < COMBAT_LOCK_DURATION_MS)
+                || (lockInRaid.get() && Models.Raid.getCurrentRaid() != null)
                 || (lockInDungeon.get() && Models.Dungeon.isInDungeon())
                 || (lockInLootrun.get() && Models.Lootrun.getState().isRunning())
                 || (lockInWorldEvent.get() && Models.WorldEvent.getCurrentWorldEvent() != null)
